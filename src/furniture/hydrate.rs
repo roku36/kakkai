@@ -15,7 +15,8 @@ pub fn strip_cameras_on_scene_ready(
 ) {
     for child in children.iter_descendants(ready.entity) {
         if cameras.contains(child) {
-            commands.entity(child).despawn();
+            // try_despawn: an ancestor may already have been despawned.
+            commands.entity(child).try_despawn();
         }
     }
 }

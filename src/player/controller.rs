@@ -16,8 +16,10 @@ pub fn plugin(app: &mut App) {
             walk.run_if(in_state(ControlMode::Walk)),
         ),
     );
+    // No grab on entering Walk: OnEnter also fires for the initial state, and
+    // grabbing the cursor at app start steals the user's mouse (any motion
+    // then rotates the camera before they ever clicked into the window).
     app.add_systems(OnEnter(ControlMode::Build), release_cursor);
-    app.add_systems(OnEnter(ControlMode::Walk), grab_cursor);
 }
 
 #[derive(Component)]

@@ -13,7 +13,9 @@ use crate::world::Ground;
 
 /// Local placement intent (Build mode). Not authoritative state — confirming
 /// a placement goes through the `PlaceFurniture` message like everything else.
-#[derive(Resource, Default)]
+/// Reflected so BRP clients (inspector, MCP agents) can read and drive it.
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
 pub struct PlacementState {
     /// Library model currently being placed, if any.
     pub model: Option<String>,
@@ -23,12 +25,15 @@ pub struct PlacementState {
 }
 
 /// Currently selected furniture root entity.
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
 pub struct Selected(pub Option<Entity>);
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<PlacementState>();
     app.init_resource::<Selected>();
+    app.register_type::<PlacementState>();
+    app.register_type::<Selected>();
     app.add_systems(
         Update,
         (
@@ -88,7 +93,9 @@ fn ignore_picking_on_scene_children(
     mut commands: Commands,
 ) {
     for child in children.iter_descendants(ready.entity) {
-        commands.entity(child).insert(Pickable::IGNORE);
+        // try_insert: a sibling observer may despawn parts of the scene
+        // (e.g. embedded cameras) in the same frame.
+        commands.entity(child).try_insert(Pickable::IGNORE);
     }
 }
 
@@ -179,8 +186,14 @@ fn select_on_click(
     furniture: Query<(), With<Furniture>>,
     parents: Query<&ChildOf>,
     gizmos: Query<&GizmoTarget>,
+    windows: Query<(), With<Window>>,
     mut selected: ResMut<Selected>,
 ) {
+    // Every click also fires a window-targeted event; without this filter it
+    // would immediately overwrite a successful mesh selection with None.
+    if windows.contains(click.entity) {
+        return;
+    }
     if *mode.get() != ControlMode::Build || placement.model.is_some() || ui_hover.0 {
         return;
     }
@@ -201,6 +214,10 @@ fn select_on_click(
             Err(_) => break None,
         }
     };
+    debug!(
+        "click on {:?} resolved furniture root {root:?}",
+        click.entity
+    );
     selected.0 = root;
 }
 

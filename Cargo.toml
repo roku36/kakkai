@@ -29,6 +29,12 @@ tracing = { version = "0.1", features = [
 version = "0.36"
 optional = true
 
+# BRP + screenshot/keyboard/mouse injection for AI-agent driven dev
+# (pairs with the bevy_brp_mcp MCP server).
+[dependencies.bevy_brp_extras]
+version = "0.19"
+optional = true
+
 [target.wasm32-unknown-unknown.dependencies]
 uuid = { version = "1", features = ["v4", "serde", "js"] }
 
@@ -52,6 +58,7 @@ dev_native = [
     "bevy/embedded_watcher",
     # BRP (Bevy Remote Protocol) for debugging (native only, breaks wasm)
     "bevy/bevy_remote",
+    "dep:bevy_brp_extras",
 ]
 
 

@@ -42,6 +42,24 @@ cargo run --release --no-default-features   # release 相当
 cargo build --profile ci --all-features     # CI と同じビルド
 ```
 
+### AI エージェント開発ループ（BRP + MCP）
+
+dev_native ビルドは **Bevy Remote Protocol** サーバー（http://localhost:15702）と
+[bevy_brp_extras](https://github.com/natepiano/bevy_brp) を起動する。
+これで実行中のアプリに対して:
+
+- `world.query` / `world.mutate_*`: ECS の状態を読み書き（家具一覧の取得など）
+- `brp_extras/screenshot`: ゲーム画面のキャプチャ（OSに触れない）
+- `brp_extras/send_keys` / `move_mouse` / `click_mouse` / `drag_mouse`:
+  アプリ内に直接入力イベントを注入（**OSカーソルは動かない**ので作業中でも安全）
+
+Claude Code 用にはプロジェクトの `.mcp.json` で
+[bevy_brp_mcp](https://crates.io/crates/bevy_brp_mcp)（`cargo install bevy_brp_mcp`）を
+登録済み。kakkai ディレクトリでセッションを開けばツールとして使える。
+
+devビルド中の右クリックは診断用レイキャスト（カーソル位置のヒット +
+画面全体のグリッドスキャン）をログに出す。
+
 ## アーキテクチャ
 
 ```
