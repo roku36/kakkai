@@ -5,18 +5,32 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.17" }
-rand = "0.9"
+# `serialize` enables serde impls for Transform etc. (save file + future replication)
+bevy = { version = "0.18", features = ["serialize"] }
+# Model library panel / HUD. 0.39 is the Bevy 0.18-compatible line.
+bevy_egui = "0.39"
+# Move/rotate gizmo for placed furniture (integrates with bevy_picking).
+transform-gizmo-bevy = "0.9"
+# Native file dialog for importing user models.
+rfd = "0.17"
+serde = { version = "1.0", features = ["derive"] }
+ron = "0.12"
+# Stable, network-ready furniture identity.
+uuid = { version = "1", features = ["v4", "serde"] }
+# Platform data dirs (~/Library/Application Support/kakkai on macOS).
+dirs = "6"
 # Compile out low-severity logs to improve performance.
-# Remove these features if you want to profile your game with tracy.
-# (see <https://github.com/bevyengine/bevy/blob/main/docs/profiling.md#tracy-profiler>)
 tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_warn",
 ] }
 
+[dependencies.bevy-inspector-egui]
+version = "0.36"
+optional = true
+
 [target.wasm32-unknown-unknown.dependencies]
-getrandom = { version = "0.3", features = ["wasm_js"] }
+uuid = { version = "1", features = ["v4", "serde", "js"] }
 
 [features]
 # Default to a native dev build.
@@ -28,6 +42,7 @@ dev = [
     "bevy/bevy_ui_debug",
     # Improve error messages coming from Bevy
     "bevy/track_location",
+    "dep:bevy-inspector-egui",
 ]
 dev_native = [
     "dev",
@@ -35,6 +50,8 @@ dev_native = [
     "bevy/file_watcher",
     # Enable embedded asset hot reloading for native dev builds.
     "bevy/embedded_watcher",
+    # BRP (Bevy Remote Protocol) for debugging (native only, breaks wasm)
+    "bevy/bevy_remote",
 ]
 
 
