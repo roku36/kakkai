@@ -1,3 +1,4 @@
+use avian3d::prelude::RigidBody;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
@@ -30,6 +31,9 @@ pub fn apply_place(
                     model: msg.model.clone(),
                 },
                 msg.transform,
+                // Static body so the visual's child colliders participate in
+                // the solver; moving it via the gizmo just teleports it.
+                RigidBody::Static,
             ))
             .id();
         index.0.insert(msg.id, entity);

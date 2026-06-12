@@ -7,6 +7,8 @@ edition = "2024"
 [dependencies]
 # `serialize` enables serde impls for Transform etc. (save file + future replication)
 bevy = { version = "0.18", features = ["serialize"] }
+# Physics: player-vs-furniture collision (pure Rust, wasm-compatible).
+avian3d = "0.6"
 # Model library panel / HUD. 0.39 is the Bevy 0.18-compatible line.
 bevy_egui = "0.39"
 # Move/rotate gizmo for placed furniture (integrates with bevy_picking).

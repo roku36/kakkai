@@ -68,7 +68,7 @@ src/
   paths.rs           # データディレクトリの解決
   states.rs          # ControlMode { Walk, Build }
   world/             # 地面・ライト・グリッド
-  player/            # 一人称キネマティックコントローラ
+  player/            # 一人称コントローラ（avian3d Dynamicボディ+回転ロック、家具と衝突）
   furniture/
     components.rs    # FurnitureId(Uuid) + Furniture { model } ← 権威状態
     messages.rs      # Place/Move/RemoveFurniture（Serialize 済み = 将来のネットプロトコル）

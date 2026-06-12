@@ -1,3 +1,4 @@
+use avian3d::prelude::{Collider, Friction, LinearVelocity, LockedAxes, RigidBody};
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
@@ -19,7 +20,7 @@ pub fn plugin(app: &mut App) {
     // No grab on entering Walk: OnEnter also fires for the initial state, and
     // grabbing the cursor at app start steals the user's mouse (any motion
     // then rotates the camera before they ever clicked into the window).
-    app.add_systems(OnEnter(ControlMode::Build), release_cursor);
+    app.add_systems(OnEnter(ControlMode::Build), (release_cursor, stop_player));
 }
 
 #[derive(Component)]
@@ -33,6 +34,10 @@ pub struct Player {
 pub struct PlayerCamera;
 
 pub const EYE_HEIGHT: f32 = 1.6;
+/// Capsule: radius 0.3, segment length 1.2 -> total height 1.8, center at 0.9.
+const CAPSULE_RADIUS: f32 = 0.3;
+const CAPSULE_LENGTH: f32 = 1.2;
+const PLAYER_CENTER_Y: f32 = CAPSULE_LENGTH / 2.0 + CAPSULE_RADIUS;
 
 fn spawn_player(mut commands: Commands) {
     commands
@@ -43,8 +48,14 @@ fn spawn_player(mut commands: Commands) {
                 pitch: 0.0,
                 speed: 5.0,
             },
-            Transform::from_xyz(0.0, 0.0, 8.0),
+            Transform::from_xyz(0.0, PLAYER_CENTER_Y, 8.0),
             Visibility::default(),
+            // Dynamic body with locked rotation: physics resolves collisions
+            // against furniture, mouse-look drives yaw via Transform.
+            RigidBody::Dynamic,
+            Collider::capsule(CAPSULE_RADIUS, CAPSULE_LENGTH),
+            LockedAxes::ROTATION_LOCKED,
+            Friction::new(0.0),
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -52,9 +63,16 @@ fn spawn_player(mut commands: Commands) {
                 PlayerCamera,
                 Camera3d::default(),
                 GizmoCamera,
-                Transform::from_xyz(0.0, EYE_HEIGHT, 0.0),
+                Transform::from_xyz(0.0, EYE_HEIGHT - PLAYER_CENTER_Y, 0.0),
             ));
         });
+}
+
+fn stop_player(mut player: Query<&mut LinearVelocity, With<Player>>) {
+    if let Ok(mut velocity) = player.single_mut() {
+        velocity.x = 0.0;
+        velocity.z = 0.0;
+    }
 }
 
 fn grab_cursor_on_click(
@@ -123,8 +141,7 @@ fn mouse_look(
 
 fn walk(
     keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut player: Query<(&Player, &mut Transform)>,
+    mut player: Query<(&Player, &Transform, &mut LinearVelocity)>,
 ) {
     let mut input = Vec3::ZERO;
     if keys.pressed(KeyCode::KeyW) {
@@ -139,10 +156,7 @@ fn walk(
     if keys.pressed(KeyCode::KeyD) {
         input.x += 1.0;
     }
-    if input == Vec3::ZERO {
-        return;
-    }
-    let Ok((player, mut transform)) = player.single_mut() else {
+    let Ok((player, transform, mut velocity)) = player.single_mut() else {
         return;
     };
     let sprint = if keys.pressed(KeyCode::ShiftLeft) {
@@ -150,9 +164,10 @@ fn walk(
     } else {
         1.0
     };
-    // Move on the ground plane relative to where the player is facing.
+    // Drive horizontal velocity from input (zero when idle so the body never
+    // slides on its own); vertical velocity stays with the physics engine.
     let direction = (transform.rotation * input).with_y(0.0).normalize_or_zero();
-    transform.translation += direction * player.speed * sprint * time.delta_secs();
-    // Kinematic v1: stay on the floor, no physics.
-    transform.translation.y = 0.0;
+    let horizontal = direction * player.speed * sprint;
+    velocity.x = horizontal.x;
+    velocity.z = horizontal.z;
 }

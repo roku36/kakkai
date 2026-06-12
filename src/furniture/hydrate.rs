@@ -1,3 +1,4 @@
+use avian3d::prelude::{Collider, ColliderConstructor, ColliderConstructorHierarchy};
 use bevy::gltf::GltfAssetLabel;
 use bevy::prelude::*;
 use bevy::scene::SceneInstanceReady;
@@ -54,6 +55,9 @@ pub fn hydrate_furniture(
                     FurnitureVisual,
                     SceneRoot(scene),
                     ChildOf(entity),
+                    // Static colliders for every mesh in the glTF (colliders
+                    // without a RigidBody are static in avian).
+                    ColliderConstructorHierarchy::new(ColliderConstructor::ConvexHullFromMesh),
                 ))
                 .observe(strip_cameras_on_scene_ready)
                 .id();
@@ -73,6 +77,7 @@ pub fn hydrate_furniture(
                         ..default()
                     })),
                     Transform::from_xyz(0.0, 0.25, 0.0),
+                    Collider::cuboid(0.5, 0.5, 0.5),
                 ));
             });
         }

@@ -14,6 +14,7 @@ mod states;
 mod ui;
 mod world;
 
+use avian3d::PhysicsPlugins;
 use bevy::asset::AssetMetaCheck;
 use bevy::asset::io::AssetSourceBuilder;
 use bevy::prelude::*;
@@ -58,6 +59,7 @@ impl Plugin for AppPlugin {
                     ..default()
                 }),
             MeshPickingPlugin,
+            PhysicsPlugins::default(),
         ));
 
         app.add_plugins((

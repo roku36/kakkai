@@ -1,3 +1,4 @@
+use avian3d::prelude::{Collider, RigidBody};
 use bevy::prelude::*;
 
 pub fn plugin(app: &mut App) {
@@ -25,6 +26,8 @@ fn setup_world(
             perceptual_roughness: 0.95,
             ..default()
         })),
+        RigidBody::Static,
+        Collider::half_space(Vec3::Y),
     ));
 
     commands.spawn((
