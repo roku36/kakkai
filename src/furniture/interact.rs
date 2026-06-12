@@ -14,7 +14,7 @@ use crate::world::Ground;
 /// Local placement intent (Build mode). Not authoritative state — confirming
 /// a placement goes through the `PlaceFurniture` message like everything else.
 /// Reflected so BRP clients (inspector, MCP agents) can read and drive it.
-#[derive(Resource, Default, Reflect)]
+#[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub struct PlacementState {
     /// Library model currently being placed, if any.
@@ -22,7 +22,23 @@ pub struct PlacementState {
     /// Yaw applied to the preview (R rotates by 45°).
     pub rotation: f32,
     pub preview: Option<Entity>,
+    /// Snap placement (and the gizmo) to the grid. Toggled with G.
+    pub snap: bool,
 }
+
+impl Default for PlacementState {
+    fn default() -> Self {
+        Self {
+            model: None,
+            rotation: 0.0,
+            preview: None,
+            snap: true,
+        }
+    }
+}
+
+/// Grid snap increment in meters (matches the drawn 1m grid subdivided once).
+pub const SNAP_DISTANCE: f32 = 0.5;
 
 /// Currently selected furniture root entity.
 #[derive(Resource, Default, Reflect)]
@@ -42,6 +58,8 @@ pub fn plugin(app: &mut App) {
             rotate_preview,
             cancel_placement,
             delete_selected,
+            duplicate_selected,
+            toggle_snap,
         )
             .run_if(in_state(ControlMode::Build)),
     );
@@ -141,9 +159,15 @@ fn drive_preview(
         return;
     }
 
+    let mut translation = hit.point;
+    if placement.snap {
+        translation.x = (translation.x / SNAP_DISTANCE).round() * SNAP_DISTANCE;
+        translation.z = (translation.z / SNAP_DISTANCE).round() * SNAP_DISTANCE;
+    }
+
     *visibility = Visibility::Inherited;
     *preview_transform = Transform {
-        translation: hit.point,
+        translation,
         rotation: Quat::from_rotation_y(placement.rotation),
         ..default()
     };
@@ -161,6 +185,45 @@ fn rotate_preview(keys: Res<ButtonInput<KeyCode>>, mut placement: ResMut<Placeme
     if keys.just_pressed(KeyCode::KeyR) && placement.model.is_some() {
         placement.rotation += std::f32::consts::FRAC_PI_4;
     }
+}
+
+/// G toggles grid snap for both placement and the transform gizmo.
+fn toggle_snap(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut placement: ResMut<PlacementState>,
+    mut gizmo_options: ResMut<transform_gizmo_bevy::GizmoOptions>,
+) {
+    if keys.just_pressed(KeyCode::KeyG) {
+        placement.snap = !placement.snap;
+        gizmo_options.snapping = placement.snap;
+    }
+}
+
+/// D duplicates the selected furniture half a grid step away, through the
+/// same `PlaceFurniture` funnel as a normal placement.
+fn duplicate_selected(
+    keys: Res<ButtonInput<KeyCode>>,
+    selected: Res<Selected>,
+    furniture: Query<(&Furniture, &Transform)>,
+    mut place: MessageWriter<PlaceFurniture>,
+) {
+    if !keys.just_pressed(KeyCode::KeyD) {
+        return;
+    }
+    let Some(entity) = selected.0 else {
+        return;
+    };
+    let Ok((item, transform)) = furniture.get(entity) else {
+        return;
+    };
+    let mut transform = *transform;
+    transform.translation.x += SNAP_DISTANCE;
+    transform.translation.z += SNAP_DISTANCE;
+    place.write(PlaceFurniture {
+        id: FurnitureId::new(),
+        model: item.model.clone(),
+        transform,
+    });
 }
 
 fn cancel_placement(keys: Res<ButtonInput<KeyCode>>, mut placement: ResMut<PlacementState>) {

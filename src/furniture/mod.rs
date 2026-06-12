@@ -16,6 +16,9 @@ pub fn plugin(app: &mut App) {
     app.add_plugins(TransformGizmoPlugin);
     app.insert_resource(GizmoOptions {
         gizmo_modes: GizmoMode::all_translate() | GizmoMode::all_rotate(),
+        snapping: true,
+        snap_distance: interact::SNAP_DISTANCE,
+        snap_angle: std::f32::consts::FRAC_PI_4,
         ..default()
     });
 

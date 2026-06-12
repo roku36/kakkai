@@ -62,9 +62,16 @@ fn library_panel(
                 }
 
                 ui.separator();
+                ui.label(if placement.snap {
+                    "Snap: ON (G)"
+                } else {
+                    "Snap: OFF (G)"
+                });
+                ui.separator();
                 ui.small("Click a model, then click the\nground to place it.");
                 ui.small("R: rotate / Esc: cancel");
                 ui.small("Click furniture: gizmo");
+                ui.small("D: duplicate selection");
                 ui.small("Backspace: delete / Tab: walk");
             });
     } else {
