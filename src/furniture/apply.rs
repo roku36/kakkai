@@ -71,12 +71,18 @@ pub fn apply_remove(
     mut commands: Commands,
     mut index: ResMut<FurnitureIndex>,
     mut dirty: ResMut<WorldDirty>,
+    mut selected: ResMut<super::interact::Selected>,
 ) {
     for msg in messages.read() {
         let Some(entity) = index.0.remove(&msg.id) else {
             warn!("RemoveFurniture for unknown id {:?}", msg.id);
             continue;
         };
+        // Removal can come from anywhere (undo, future network) — never
+        // leave a dangling selection behind.
+        if selected.0 == Some(entity) {
+            selected.0 = None;
+        }
         commands.entity(entity).despawn();
         dirty.mark();
     }

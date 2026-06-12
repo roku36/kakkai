@@ -19,6 +19,9 @@ Bevy 製のメタバース基盤。3D ワールドを一人称で歩き回り、
 | （Build）R | プレビューを45°回転 |
 | （Build）家具クリック | 選択 → 移動/回転ギズモ表示 |
 | （Build）Backspace / Delete | 選択中の家具を削除 |
+| （Build）D | 選択中の家具を複製 |
+| （Build）G | グリッドスナップ切替 |
+| Cmd+Z / Cmd+Shift+Z | Undo / Redo |
 | F12 | （devビルド）ワールドインスペクタ |
 
 ## モデルの追加

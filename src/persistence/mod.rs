@@ -33,7 +33,13 @@ pub fn plugin(app: &mut App) {
     );
 }
 
-fn load_world(dirs: Res<AppDirs>, mut place: MessageWriter<PlaceFurniture>) {
+fn load_world(
+    dirs: Res<AppDirs>,
+    mut place: MessageWriter<PlaceFurniture>,
+    mut undo: ResMut<crate::furniture::UndoStack>,
+) {
+    // Restored furniture must not be undoable as if the user had placed it.
+    undo.suppress_frames = 2;
     let text = match std::fs::read_to_string(&dirs.save_file) {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {

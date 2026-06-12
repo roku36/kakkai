@@ -73,6 +73,7 @@ fn library_panel(
                 ui.small("Click furniture: gizmo");
                 ui.small("D: duplicate selection");
                 ui.small("Backspace: delete / Tab: walk");
+                ui.small("Cmd+Z: undo / Cmd+Shift+Z: redo");
             });
     } else {
         egui::Area::new(egui::Id::new("hint"))

@@ -3,11 +3,13 @@ mod components;
 mod hydrate;
 mod interact;
 mod messages;
+mod undo;
 
 pub use apply::FurnitureIndex;
 pub use components::{Furniture, FurnitureId};
 pub use interact::PlacementState;
 pub use messages::{MoveFurniture, PlaceFurniture, RemoveFurniture};
+pub use undo::UndoStack;
 
 use bevy::prelude::*;
 use transform_gizmo_bevy::{GizmoMode, GizmoOptions, TransformGizmoPlugin};
@@ -30,10 +32,13 @@ pub fn plugin(app: &mut App) {
     app.add_message::<RemoveFurniture>();
 
     app.init_resource::<FurnitureIndex>();
+    app.init_resource::<UndoStack>();
 
     app.add_systems(
         Update,
         (
+            undo::undo_redo_input,
+            undo::record_actions,
             (apply::apply_place, apply::apply_move, apply::apply_remove),
             hydrate::hydrate_furniture,
         )
