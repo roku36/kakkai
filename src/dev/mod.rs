@@ -15,7 +15,33 @@ pub fn plugin(app: &mut App) {
     #[cfg(feature = "dev_native")]
     app.add_plugins(bevy_brp_extras::BrpExtrasPlugin::default());
 
-    app.add_systems(Update, debug_raycast);
+    app.add_systems(Update, (debug_raycast, dev_place));
+    app.init_resource::<DevPlace>();
+    app.register_type::<DevPlace>();
+}
+
+/// Agent-drivable placement: set via BRP `world.mutate_resources` and the
+/// furniture goes through the exact same message funnel as a UI placement.
+/// (Pointer simulation moves the real OS cursor, so it's off-limits.)
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+pub struct DevPlace {
+    pub model: Option<String>,
+    pub position: Vec3,
+}
+
+fn dev_place(
+    mut request: ResMut<DevPlace>,
+    mut place: MessageWriter<crate::furniture::PlaceFurniture>,
+) {
+    let Some(model) = request.model.take() else {
+        return;
+    };
+    place.write(crate::furniture::PlaceFurniture {
+        id: crate::furniture::FurnitureId::new(),
+        model,
+        transform: Transform::from_translation(request.position),
+    });
 }
 
 /// Right-click: grid-scan rays over the viewport and log which entities are
