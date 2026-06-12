@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass, egui};
+use bevy_replicon::prelude::{ClientState, ConnectedClient, ServerState};
 
 use crate::furniture::PlacementState;
 use crate::library::{ImportRequested, ModelLibrary};
+use crate::net::{NetAction, NetRequest, NetUi};
 use crate::paths::AppDirs;
 use crate::states::ControlMode;
 
@@ -25,6 +27,11 @@ fn library_panel(
     mut placement: ResMut<PlacementState>,
     mut import: ResMut<ImportRequested>,
     mut ui_hover: ResMut<UiHover>,
+    server: Res<State<ServerState>>,
+    client: Res<State<ClientState>>,
+    clients: Query<(), With<ConnectedClient>>,
+    mut net_ui: ResMut<NetUi>,
+    mut net_request: ResMut<NetRequest>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
@@ -67,6 +74,44 @@ fn library_panel(
                 } else {
                     "Snap: OFF (G)"
                 });
+                ui.separator();
+                ui.heading("Network");
+                match (*server.get(), *client.get()) {
+                    (ServerState::Running, _) => {
+                        ui.label(format!(
+                            "Hosting :{} ({} guest(s))",
+                            crate::net::DEFAULT_PORT,
+                            clients.iter().count()
+                        ));
+                        if ui.button("Stop hosting").clicked() {
+                            net_request.0 = Some(NetAction::Leave);
+                        }
+                    }
+                    (_, ClientState::Connected) => {
+                        ui.label(format!("Connected to {}", net_ui.address));
+                        if ui.button("Disconnect").clicked() {
+                            net_request.0 = Some(NetAction::Leave);
+                        }
+                    }
+                    (_, ClientState::Connecting) => {
+                        ui.label("Connecting…");
+                        if ui.button("Cancel").clicked() {
+                            net_request.0 = Some(NetAction::Leave);
+                        }
+                    }
+                    _ => {
+                        if ui.button("Host world").clicked() {
+                            net_request.0 = Some(NetAction::Host);
+                        }
+                        ui.horizontal(|ui| {
+                            ui.text_edit_singleline(&mut net_ui.address);
+                        });
+                        if ui.button("Join").clicked() {
+                            net_request.0 = Some(NetAction::Join(net_ui.address.clone()));
+                        }
+                    }
+                }
+
                 ui.separator();
                 ui.small("Click a model, then click the\nground to place it.");
                 ui.small("R: rotate / Esc: cancel");

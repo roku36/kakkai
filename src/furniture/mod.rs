@@ -34,6 +34,25 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<FurnitureIndex>();
     app.init_resource::<UndoStack>();
 
+    // Maintain the id->entity index from component lifecycle so it stays
+    // correct for replicated entities on clients too.
+    app.add_observer(
+        |add: On<Add, FurnitureId>, ids: Query<&FurnitureId>, mut index: ResMut<FurnitureIndex>| {
+            if let Ok(id) = ids.get(add.entity) {
+                index.0.insert(*id, add.entity);
+            }
+        },
+    );
+    app.add_observer(
+        |remove: On<Remove, FurnitureId>,
+         ids: Query<&FurnitureId>,
+         mut index: ResMut<FurnitureIndex>| {
+            if let Ok(id) = ids.get(remove.entity) {
+                index.0.remove(id);
+            }
+        },
+    );
+
     app.add_systems(
         Update,
         (

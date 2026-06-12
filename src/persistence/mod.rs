@@ -27,9 +27,16 @@ const SAVE_DEBOUNCE_SECS: f32 = 2.0;
 pub fn plugin(app: &mut App) {
     app.init_resource::<WorldDirty>();
     app.add_systems(PostStartup, load_world);
+    // Only the authority persists: while connected to someone else's world,
+    // the local save file is left untouched.
+    let disconnected = in_state(bevy_replicon::prelude::ClientState::Disconnected);
     app.add_systems(
         Last,
-        (debounced_save, save_on_exit.run_if(on_message::<AppExit>)).chain(),
+        (
+            debounced_save.run_if(disconnected.clone()),
+            save_on_exit.run_if(on_message::<AppExit>.and(disconnected)),
+        )
+            .chain(),
     );
 }
 

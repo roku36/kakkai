@@ -94,6 +94,12 @@ fn release_cursor_on_escape(
 }
 
 fn grab_cursor(mut cursor: Query<&mut CursorOptions, With<PrimaryWindow>>) {
+    // Escape hatch for automated testing: grabbing the cursor locks the REAL
+    // OS pointer to the window, which hijacks the mouse of whoever is using
+    // the machine while agent-driven instances run in the background.
+    if std::env::var_os("KAKKAI_NO_GRAB").is_some() {
+        return;
+    }
     let Ok(mut cursor) = cursor.single_mut() else {
         return;
     };

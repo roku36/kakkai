@@ -1,4 +1,4 @@
-use avian3d::prelude::{Collider, ColliderConstructor, ColliderConstructorHierarchy};
+use avian3d::prelude::{Collider, ColliderConstructor, ColliderConstructorHierarchy, RigidBody};
 use bevy::gltf::GltfAssetLabel;
 use bevy::prelude::*;
 use bevy::scene::SceneInstanceReady;
@@ -37,6 +37,9 @@ pub fn hydrate_furniture(
     mut commands: Commands,
 ) {
     for (entity, item) in &furniture {
+        // Physics root for the colliders below. Lives here (not in apply.rs)
+        // so replicated furniture is solid on clients too.
+        commands.entity(entity).insert(RigidBody::Static);
         // Drop the previous visual on model swap.
         if let Ok(existing) = children.get(entity) {
             for child in existing {

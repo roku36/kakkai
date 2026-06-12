@@ -22,6 +22,7 @@ pub fn plugin(app: &mut App) {
     app.init_resource::<ModelLibrary>();
     app.init_resource::<ImportRequested>();
     app.init_resource::<import::PendingImport>();
+    app.register_type::<ImportRequested>();
     app.add_systems(
         Startup,
         |dirs: Res<AppDirs>, mut library: ResMut<ModelLibrary>| {

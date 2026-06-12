@@ -1,12 +1,14 @@
-use avian3d::prelude::RigidBody;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
+use bevy_replicon::prelude::{FromClient, Replicated};
 
 use super::components::{Furniture, FurnitureId};
 use super::messages::{MoveFurniture, PlaceFurniture, RemoveFurniture};
 use crate::persistence::WorldDirty;
 
-/// Lookup from stable id to the live ECS entity.
+/// Lookup from stable id to the live ECS entity. Maintained by component
+/// lifecycle observers (see furniture/mod.rs), so it works on clients with
+/// replicated entities just as well as on the authority.
 #[derive(Resource, Default)]
 pub struct FurnitureIndex(pub HashMap<FurnitureId, Entity>);
 
@@ -17,12 +19,15 @@ fn validate(mut transform: Transform) -> Transform {
     transform
 }
 
-/// The single writer of furniture state. In a future multiplayer build this
-/// runs server-side and is where validation (ownership, bounds) will live.
+/// The single writer of furniture state. These systems consume
+/// `FromClient<M>` messages, which only exist on the authority: locally
+/// written messages on the server/singleplayer convert in place, while
+/// messages written on a connected client travel over the network first.
+/// This is where validation (ownership, bounds) lives.
 pub fn apply_place(
-    mut messages: MessageReader<PlaceFurniture>,
+    mut messages: MessageReader<FromClient<PlaceFurniture>>,
     mut commands: Commands,
-    mut index: ResMut<FurnitureIndex>,
+    index: Res<FurnitureIndex>,
     mut dirty: ResMut<WorldDirty>,
 ) {
     for msg in messages.read() {
@@ -30,26 +35,21 @@ pub fn apply_place(
             warn!("PlaceFurniture for existing id {:?}, ignoring", msg.id);
             continue;
         }
-        let entity = commands
-            .spawn((
-                Name::new(format!("Furniture({})", msg.model)),
-                msg.id,
-                Furniture {
-                    model: msg.model.clone(),
-                },
-                validate(msg.transform),
-                // Static body so the visual's child colliders participate in
-                // the solver; moving it via the gizmo just teleports it.
-                RigidBody::Static,
-            ))
-            .id();
-        index.0.insert(msg.id, entity);
+        commands.spawn((
+            Name::new(format!("Furniture({})", msg.model)),
+            msg.id,
+            Furniture {
+                model: msg.model.clone(),
+            },
+            validate(msg.transform),
+            Replicated,
+        ));
         dirty.mark();
     }
 }
 
 pub fn apply_move(
-    mut messages: MessageReader<MoveFurniture>,
+    mut messages: MessageReader<FromClient<MoveFurniture>>,
     mut transforms: Query<&mut Transform, With<Furniture>>,
     index: Res<FurnitureIndex>,
     mut dirty: ResMut<WorldDirty>,
@@ -67,19 +67,19 @@ pub fn apply_move(
 }
 
 pub fn apply_remove(
-    mut messages: MessageReader<RemoveFurniture>,
+    mut messages: MessageReader<FromClient<RemoveFurniture>>,
     mut commands: Commands,
-    mut index: ResMut<FurnitureIndex>,
+    index: Res<FurnitureIndex>,
     mut dirty: ResMut<WorldDirty>,
     mut selected: ResMut<super::interact::Selected>,
 ) {
     for msg in messages.read() {
-        let Some(entity) = index.0.remove(&msg.id) else {
+        let Some(&entity) = index.0.get(&msg.id) else {
             warn!("RemoveFurniture for unknown id {:?}", msg.id);
             continue;
         };
-        // Removal can come from anywhere (undo, future network) — never
-        // leave a dangling selection behind.
+        // Removal can come from anywhere (undo, network) — never leave a
+        // dangling selection behind.
         if selected.0 == Some(entity) {
             selected.0 = None;
         }

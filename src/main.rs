@@ -7,6 +7,7 @@
 mod dev;
 mod furniture;
 mod library;
+mod net;
 mod paths;
 mod persistence;
 mod player;
@@ -67,6 +68,7 @@ impl Plugin for AppPlugin {
             world::plugin,
             player::plugin,
             furniture::plugin,
+            net::plugin,
             library::plugin,
             persistence::plugin,
             ui::plugin,

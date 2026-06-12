@@ -6,8 +6,9 @@ use bevy::tasks::{IoTaskPool, Task, block_on, poll_once};
 use super::ModelLibrary;
 use crate::paths::AppDirs;
 
-/// Set by the UI; consumed by `start_import`.
-#[derive(Resource, Default)]
+/// Set by the UI (or directly via BRP); consumed by `start_import`.
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
 pub struct ImportRequested(pub bool);
 
 /// In-flight file dialog, if any. The dialog runs as an async task so the

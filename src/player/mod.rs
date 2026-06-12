@@ -1,6 +1,6 @@
 mod controller;
 
-pub use controller::PlayerCamera;
+pub use controller::{Player, PlayerCamera};
 
 use bevy::prelude::*;
 
