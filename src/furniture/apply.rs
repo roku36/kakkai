@@ -10,6 +10,13 @@ use crate::persistence::WorldDirty;
 #[derive(Resource, Default)]
 pub struct FurnitureIndex(pub HashMap<FurnitureId, Entity>);
 
+/// Keep furniture from sinking below the floor. Floating is allowed (e.g.
+/// on top of other furniture); going underground never is.
+fn validate(mut transform: Transform) -> Transform {
+    transform.translation.y = transform.translation.y.max(0.0);
+    transform
+}
+
 /// The single writer of furniture state. In a future multiplayer build this
 /// runs server-side and is where validation (ownership, bounds) will live.
 pub fn apply_place(
@@ -30,7 +37,7 @@ pub fn apply_place(
                 Furniture {
                     model: msg.model.clone(),
                 },
-                msg.transform,
+                validate(msg.transform),
                 // Static body so the visual's child colliders participate in
                 // the solver; moving it via the gizmo just teleports it.
                 RigidBody::Static,
@@ -53,7 +60,7 @@ pub fn apply_move(
             continue;
         };
         if let Ok(mut transform) = transforms.get_mut(entity) {
-            *transform = msg.transform;
+            *transform = validate(msg.transform);
             dirty.mark();
         }
     }
