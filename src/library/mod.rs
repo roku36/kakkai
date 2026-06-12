@@ -21,13 +21,14 @@ pub struct ModelEntry {
 pub fn plugin(app: &mut App) {
     app.init_resource::<ModelLibrary>();
     app.init_resource::<ImportRequested>();
+    app.init_resource::<import::PendingImport>();
     app.add_systems(
         Startup,
         |dirs: Res<AppDirs>, mut library: ResMut<ModelLibrary>| {
             rescan(&dirs, &mut library);
         },
     );
-    app.add_systems(Update, import::run_import_dialog);
+    app.add_systems(Update, (import::start_import, import::poll_import).chain());
 }
 
 pub fn rescan(dirs: &AppDirs, library: &mut ModelLibrary) {

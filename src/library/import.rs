@@ -1,34 +1,56 @@
+use std::path::PathBuf;
+
 use bevy::prelude::*;
+use bevy::tasks::{IoTaskPool, Task, block_on, poll_once};
 
 use super::ModelLibrary;
 use crate::paths::AppDirs;
 
-/// Set by the UI; consumed by `run_import_dialog`.
+/// Set by the UI; consumed by `start_import`.
 #[derive(Resource, Default)]
 pub struct ImportRequested(pub bool);
 
-/// Opens a blocking native file dialog and copies the chosen model into the
-/// library. Exclusive system: rfd must run on the main thread on macOS, and
-/// the game freezing during the modal dialog is fine for v1.
-pub fn run_import_dialog(world: &mut World) {
-    if !std::mem::take(&mut world.resource_mut::<ImportRequested>().0) {
+/// In-flight file dialog, if any. The dialog runs as an async task so the
+/// game loop keeps rendering behind it (rfd dispatches the actual panel to
+/// the main thread internally).
+#[derive(Resource, Default)]
+pub struct PendingImport(Option<Task<Option<PathBuf>>>);
+
+pub fn start_import(mut requested: ResMut<ImportRequested>, mut pending: ResMut<PendingImport>) {
+    if !std::mem::take(&mut requested.0) || pending.0.is_some() {
         return;
     }
-    let Some(source) = rfd::FileDialog::new()
-        .add_filter("glTF model", &["glb", "gltf"])
-        .pick_file()
-    else {
+    pending.0 = Some(IoTaskPool::get().spawn(async {
+        rfd::AsyncFileDialog::new()
+            .add_filter("glTF model", &["glb", "gltf"])
+            .pick_file()
+            .await
+            .map(|handle| handle.path().to_path_buf())
+    }));
+}
+
+pub fn poll_import(
+    mut pending: ResMut<PendingImport>,
+    dirs: Res<AppDirs>,
+    mut library: ResMut<ModelLibrary>,
+) {
+    let Some(task) = pending.0.as_mut() else {
         return;
+    };
+    let Some(result) = block_on(poll_once(task)) else {
+        return;
+    };
+    pending.0 = None;
+    let Some(source) = result else {
+        return; // dialog cancelled
     };
     let Some(file_name) = source.file_name() else {
         return;
     };
-    let dirs = world.resource::<AppDirs>().clone();
     let dest = dirs.models_dir.join(file_name);
     match std::fs::copy(&source, &dest) {
         Ok(_) => {
             info!("imported model {:?}", dest.file_name().unwrap_or_default());
-            let mut library = world.resource_mut::<ModelLibrary>();
             super::rescan(&dirs, &mut library);
         }
         Err(e) => error!("failed to import {source:?}: {e}"),
